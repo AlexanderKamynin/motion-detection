@@ -1,10 +1,31 @@
 import cv2
+import numpy as np
 
 class MotionDetectionCV:
     def __init__(self, video_stream):
         self.__video_stream = video_stream
         
         self.__min_area = 250
+        self.__blur_kernel_size = (5,5)
+        
+    def get_background(self):
+        # get randomly frames for calculating median 
+        frame_indices = self.__video_stream.get(cv2.CAP_PROP_FRAME_COUNT) * np.random.uniform(size=75)
+        
+        frames = []
+        for idx in frame_indices:
+            self.__video_stream.set(cv2.CAP_PROP_POS_FRAMES, idx)
+            is_success, frame = self.__video_stream.read()
+            frames.append(frame)
+        
+        background_frame = np.median(frames, axis=0).astype(np.uint8)
+        
+        return background_frame
+
+    def static_video_detect(self):
+        background = self.get_background()
+        cv2.imshow('image', background)
+        cv2.waitKey(0)
     
     def detect(self):
         is_success, frame1 = self.__video_stream.read()
@@ -15,7 +36,7 @@ class MotionDetectionCV:
             gray_frame2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
         
             delta = cv2.absdiff(gray_frame1, gray_frame2)
-            delta = cv2.GaussianBlur(delta, (5, 5), 0)
+            delta = cv2.GaussianBlur(delta, self.__blur_kernel_size, 0)
             
             is_success, threshold = cv2.threshold(delta, 20, 255, cv2.THRESH_BINARY)
             dilated = cv2.dilate(threshold, None, iterations=3)
@@ -40,4 +61,6 @@ class MotionDetectionCV:
 
 
 if __name__ == '__main__':
-    pass
+    video_stream = cv2.VideoCapture('../../videos/default.mp4')
+    md = MotionDetectionCV(video_stream)
+    md.static_video_detect()
