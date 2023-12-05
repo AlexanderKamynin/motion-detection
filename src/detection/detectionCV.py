@@ -130,6 +130,6 @@ class MotionDetectionCV:
 
 if __name__ == '__main__':
     video_stream = cv2.VideoCapture('../videos/test1.mp4')
-    # self.__video_stream = cv.VideoCapture('http://192.168.217.103/mjpg/video.mjpg')
+    # video_stream = cv.VideoCapture('http://192.168.217.103/mjpg/video.mjpg')
     md = MotionDetectionCV(video_stream)
     md.detect()
