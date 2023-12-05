@@ -21,15 +21,35 @@ class Tracker:
         
         self.__frame_size = frame_size
         self.__mask = np.zeros(self.__frame_size)
+        self.__max_point = 30
+        self.__colors = np.random.randint(0, 255, (15, 3))
+        self.__points_history = []
     
     def track(self, frame_gray_init, frame_gray_cur, object_points):
         # Lucas-Kanade Optical Flow, using OpenCV
         # return the mask with vectors from old to new position 
         old_points = np.array(object_points, dtype=np.float32)
-        new_points, status, err = cv2.calcOpticalFlowPyrLK(frame_gray_init, frame_gray_cur, old_points, None, **self.__lk_params)
+        new_points, _, _ = cv2.calcOpticalFlowPyrLK(frame_gray_init, frame_gray_cur, old_points, None, **self.__lk_params)
+        
+        #save points
+        self.__points_history.append({'old_points': old_points, 'new_points': new_points})
         
         for idx, point in enumerate(new_points):
             old = tuple(map(int, old_points[idx]))
             new = tuple(map(int, point))
-            self.__mask = cv2.line(self.__mask, old, new, color=(255,255,0), thickness=1)
+            self.__mask = cv2.line(self.__mask, old, new, self.__colors[idx].tolist(), thickness=2)
+            
+        if len(self.__points_history) > self.__max_point:
+            self.__clear_last_points()
+            
         return self.__mask.astype('uint8')
+    
+    def __clear_last_points(self):
+        last_points = self.__points_history.pop(0)
+        
+        old = last_points['old_points']
+        new = last_points['new_points']
+        
+        # set black on the mask
+        for idx, point in enumerate(old):
+            cv2.line(self.__mask, tuple(map(int ,point)), tuple(map(int, new[idx])), color=(0,0,0))
