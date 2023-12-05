@@ -18,6 +18,7 @@ class Core:
     def __read_video(self):
         print('Start read the video...')
         self.__video_stream = cv2.VideoCapture('src/videos/default.mp4')
+        # self.__video_stream = cv.VideoCapture('http://192.168.217.103/mjpg/video.mjpg')
         if(self.__video_stream == False):
             raise ValueError('Error opening video stream')
 
