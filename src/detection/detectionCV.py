@@ -10,10 +10,12 @@ class MotionDetectionCV:
     
     def __init__(self, video_stream):
         self.__video_stream = video_stream
-        self.__tracker = Tracker()
         
         self.__height = int(video_stream.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.__width = int(video_stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.__channel_numbers = 0
+        
+        self.__tracker = None
     
         self.__min_area = 500
         self.__blur_kernel_size = (5,5)
@@ -22,6 +24,10 @@ class MotionDetectionCV:
 
     def detect(self):
         is_success, frame1 = self.__video_stream.read()
+        
+        self.__channel_numbers = frame1.shape[-1]
+        self.__tracker = Tracker((self.__width, self.__height, self.__channel_numbers))
+        
         frame_count = 0
         processed_frames = []
 
@@ -36,9 +42,6 @@ class MotionDetectionCV:
                 
                 gray_frame1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
                 gray_frame2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-                
-                
-                self.__tracker.track(frame1, gray_frame1, frame2, gray_frame2)
             
                 difference = cv2.absdiff(gray_frame1, gray_frame2)
                 difference = cv2.GaussianBlur(difference, self.__blur_kernel_size, 0)
@@ -62,16 +65,23 @@ class MotionDetectionCV:
                     
                 bounded_rectangles = self.__delete_inner_rectangles(bounded_rectangles)
                 
+                object_points = []
                 # draw all rect
                 if bounded_rectangles:
                     for rectangle in bounded_rectangles:
                         cv2.rectangle(frame1, (rectangle[0][0], rectangle[0][1]), (rectangle[1][0], rectangle[1][1]), (0, 255, 0), 2)
+                        rectangle_center = MotionDetectionCV.get_center_coords(rectangle)
+                        cv2.circle(frame1, rectangle_center, 3, (255, 0, 0), 1)
+                        object_points.append(rectangle_center)
                 
-                cv2.imshow("video", frame1)
+                mask = self.__tracker.track(gray_frame1, gray_frame2, object_points)
+                
+                result = cv2.add(frame1, mask)
+                cv2.imshow("video", result)
                 frame1 = frame2
                 is_success, frame2 = self.__video_stream.read()
                 
-                if cv2.waitKey(25) & 0xFF == ord('q'):
+                if cv2.waitKey(50) & 0xFF == ord('q'):
                     break
             else:
                 break
@@ -109,9 +119,16 @@ class MotionDetectionCV:
         elif top_x2 >= top_x1 and down_x2 <= down_x1 and top_y2 >= top_y1 and down_y2 <= down_y1:
             return True
         return False
+    
+    @staticmethod
+    def get_center_coords(rect):
+        # tuple (x; y)
+        x = (rect[1][0] + rect[0][0]) // 2
+        y = (rect[1][1] + rect[0][1]) // 2
+        return (x, y)
 
 
 if __name__ == '__main__':
-    video_stream = cv2.VideoCapture('../videos/default.mp4')
+    video_stream = cv2.VideoCapture('../videos/test1.mp4')
     md = MotionDetectionCV(video_stream)
     md.detect()
