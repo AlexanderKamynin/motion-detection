@@ -4,6 +4,7 @@ import sys
 import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from components.gaussianBlur import GaussianBlur
 
 
 class MotionDetectionCustom:
@@ -70,6 +71,8 @@ class MotionDetectionCustom:
         pass
 
 if __name__ == '__main__':
-    video_stream = cv2.VideoCapture('../videos/test1.mp4')
-    md = MotionDetectionCustom(video_stream)
-    md.detect()
+    # video_stream = cv2.VideoCapture('../videos/test1.mp4')
+    # md = MotionDetectionCustom(video_stream)
+    # md.detect()
+    
+    GaussianBlur = GaussianBlur((5,5))
