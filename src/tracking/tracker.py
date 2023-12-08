@@ -52,4 +52,4 @@ class Tracker:
         
         # set black on the mask
         for idx, point in enumerate(old):
-            cv2.line(self.__mask, tuple(map(int ,point)), tuple(map(int, new[idx])), color=(0,0,0))
+            cv2.line(self.__mask, tuple(map(int ,point)), tuple(map(int, new[idx])), color=(0,0,0), thickness=2)
