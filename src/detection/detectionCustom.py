@@ -42,8 +42,9 @@ class MotionDetectionCustom:
                 # converting frames to gray
                 gray_frame1 = MotionDetectionCustom.convertRGBtoGray(frame1)
                 gray_frame2 = MotionDetectionCustom.convertRGBtoGray(frame2)
+                difference = abs(gray_frame1 - gray_frame2).astype('uint8')
                 
-                cv2.imshow("video", gray_frame1)
+                cv2.imshow("video", difference)
                 frame1 = frame2
                 is_success, frame2 = self.__video_stream.read()
                 
@@ -62,11 +63,13 @@ class MotionDetectionCustom:
 
         # we don't need to clip values, because in worst case have 0.299*255 + 0.587*255 + 0.114*255 = 255 <= 255
         gray_img = 0.299*image[:,:,0] + 0.587*image[:,:,1] + 0.114*image[:,:,2]
-        gray_img = gray_img.astype('uint8')
+        gray_img = gray_img.astype('int')
         return gray_img
     
+    def GaussianBlur(self, image, kernel_size):
+        pass
 
 if __name__ == '__main__':
-    video_stream = cv2.VideoCapture('../videos/default.mp4')
+    video_stream = cv2.VideoCapture('../videos/test1.mp4')
     md = MotionDetectionCustom(video_stream)
     md.detect()

@@ -42,8 +42,9 @@ class MotionDetectionCV:
                 
                 gray_frame1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
                 gray_frame2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-            
+                
                 difference = cv2.absdiff(gray_frame1, gray_frame2)
+                cv2.imshow("diff", difference)
                 difference = cv2.GaussianBlur(difference, self.__blur_kernel_size, 0)
                 
                 _, threshold = cv2.threshold(difference, self.__threshold, 255, cv2.THRESH_BINARY)
