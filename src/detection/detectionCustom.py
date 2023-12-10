@@ -18,7 +18,8 @@ class MotionDetectionCustom:
         self.__tracker = None
     
         self.__min_area = 500
-        self.__blur_kernel_size = (5,5)
+        self.__blur_kernel_size = 5
+        self.__gaussian_blur = GaussianBlur(self.__blur_kernel_size)
         self.__threshold = 25
         self.__max_frames = 4
         
@@ -45,6 +46,9 @@ class MotionDetectionCustom:
                 gray_frame2 = MotionDetectionCustom.convertRGBtoGray(frame2)
                 difference = abs(gray_frame1 - gray_frame2).astype('uint8')
                 
+                blurred = self.__gaussian_blur.blur_image(difference)
+                
+                cv2.imshow("blur", blurred)
                 cv2.imshow("video", difference)
                 frame1 = frame2
                 is_success, frame2 = self.__video_stream.read()
@@ -71,8 +75,6 @@ class MotionDetectionCustom:
         pass
 
 if __name__ == '__main__':
-    # video_stream = cv2.VideoCapture('../videos/test1.mp4')
-    # md = MotionDetectionCustom(video_stream)
-    # md.detect()
-    
-    GaussianBlur = GaussianBlur((5,5))
+    video_stream = cv2.VideoCapture('../videos/test1.mp4')
+    md = MotionDetectionCustom(video_stream)
+    md.detect()
