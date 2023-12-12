@@ -5,6 +5,7 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from components.gaussianBlur import GaussianBlur
+from components.dilatation import Dilatation
 
 
 class MotionDetectionCustom:
@@ -20,6 +21,7 @@ class MotionDetectionCustom:
         self.__min_area = 500
         self.__blur_kernel_size = 5
         self.__gaussian_blur = GaussianBlur(self.__blur_kernel_size)
+        self.__dilatation = Dilatation()
         self.__threshold = 25
         self.__max_frames = 4
         
@@ -50,6 +52,7 @@ class MotionDetectionCustom:
                 difference = self.__gaussian_blur.blur_image(difference)
                 # threshold
                 threshold = ((difference > self.__threshold) * 255).astype('uint8')
+                #dilated = self.__dilatation.dilate(threshold, 3)
                 
                 cv2.imshow("threshold", threshold)
                 cv2.imshow("video", difference)
