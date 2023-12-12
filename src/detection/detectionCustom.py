@@ -52,9 +52,14 @@ class MotionDetectionCustom:
                 difference = self.__gaussian_blur.blur_image(difference)
                 # threshold
                 threshold = ((difference > self.__threshold) * 255).astype('uint8')
-                #dilated = self.__dilatation.dilate(threshold, 3)
+                #threshold2 = ((difference > self.__threshold / 3) * 255).astype('uint8')
+                # erosion would be implemented here
+                dilated = self.__dilatation.dilate(threshold, 3)
+                #processed_frames.append(dilated)
+                #accumulate_frame = np.mean(processed_frames, axis=0).astype('uint8')
                 
                 cv2.imshow("threshold", threshold)
+                
                 cv2.imshow("video", difference)
                 frame1 = frame2
                 is_success, frame2 = self.__video_stream.read()
