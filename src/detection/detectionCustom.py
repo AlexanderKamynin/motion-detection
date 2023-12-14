@@ -5,7 +5,7 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from components.gaussianBlur import GaussianBlur
-from components.dilatation import Dilatation
+from components.morphology import MorphologyOperations
 
 
 class MotionDetectionCustom:
@@ -21,7 +21,7 @@ class MotionDetectionCustom:
         self.__min_area = 500
         self.__blur_kernel_size = 5
         self.__gaussian_blur = GaussianBlur(self.__blur_kernel_size)
-        self.__dilatation = Dilatation()
+        self.__morphology = MorphologyOperations()
         self.__threshold = 25
         self.__max_frames = 4
         
@@ -40,8 +40,8 @@ class MotionDetectionCustom:
                 frame_count += 1
                 # when frame count is more than max computing frames, using in detect - update processed frames
                 # just delete the first element from history
-                # if frame_count > self.__max_frames:
-                #     processed_frames.pop(0)
+                if frame_count > self.__max_frames:
+                    processed_frames.pop(0)
                     
                 # converting frames to gray
                 gray_frame1 = MotionDetectionCustom.convertRGBtoGray(frame1)
@@ -52,25 +52,26 @@ class MotionDetectionCustom:
                 difference = self.__gaussian_blur.blur_image(difference)
                 # threshold
                 threshold = ((difference > self.__threshold) * 255).astype('uint8')
-                #threshold2 = ((difference > self.__threshold / 3) * 255).astype('uint8')
-                # erosion would be implemented here
-                dilated = self.__dilatation.dilate(threshold, 3)
-                #processed_frames.append(dilated)
-                #accumulate_frame = np.mean(processed_frames, axis=0).astype('uint8')
+                dilated = self.__morphology.dilate(threshold)
                 
-                cv2.imshow("threshold", threshold)
+                processed_frames.append(dilated)
+                accumulate_frame = np.mean(processed_frames, axis=0).astype('uint8')
+                
                 
                 cv2.imshow("video", difference)
                 frame1 = frame2
                 is_success, frame2 = self.__video_stream.read()
                 
-                if cv2.waitKey(25) & 0xFF == ord('q'):
+                if cv2.waitKey(15) & 0xFF == ord('q'):
                     break
             else:
                 break
         
         self.__video_stream.release()
         cv2.destroyAllWindows()
+        
+    def __find_contours(self, image):
+        pass
 
     @staticmethod             
     def convertRGBtoGray(image):
