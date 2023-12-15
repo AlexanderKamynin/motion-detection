@@ -57,6 +57,7 @@ class MotionDetectionCustom:
                 processed_frames.append(dilated)
                 accumulate_frame = np.mean(processed_frames, axis=0).astype('uint8')
                 
+                self.__find_contours(accumulate_frame)
                 
                 cv2.imshow("video", difference)
                 frame1 = frame2
@@ -71,7 +72,52 @@ class MotionDetectionCustom:
         cv2.destroyAllWindows()
         
     def __find_contours(self, image):
-        pass
+        h, w = image.shape[:2]
+        visited = np.zeros((h,w), dtype=bool)
+        contours = []
+        for row in range(h):
+            for col in range(w):
+                if not visited[row][col] and image[row][col]:
+                    queue = []
+                    
+                    queue.append((col, row))
+                    object_contour = [[col,row], [col,row]]
+                    
+                    while queue:
+                        x, y = queue.pop(0)
+                        visited[y, x] = True
+                        
+                        if x - 1 >= 0 and image[y, x-1] >= 170 and not visited[y, x-1]:
+                            queue.append((x-1,y))
+                            visited[y, x-1] = True
+                            # update left corner
+                            if x - 1 < object_contour[0][0]:
+                                object_contour[0][0] = x - 1
+                                
+                        # up
+                        if y - 1 >= 0 and image[y-1, x] >= 170 and not visited[y-1, x]:
+                            queue.append((x,y-1))
+                            visited[y-1, x] = True
+                            if y - 1 < object_contour[0][1]:
+                                object_contour[0][1] = y - 1
+                                
+                        # right
+                        if y + 1 < h and image[y+1, x] >= 170 and not visited[y+1, x]:
+                            queue.append((x,y+1))
+                            visited[y+1, x] = True
+                            if y + 1 > object_contour[1][1]:
+                                object_contour[1][1] = y + 1
+                        # down
+                        if x + 1 < w and image[y, x+1] >= 170 and not visited[y, x+1]:
+                            queue.append((x+1,y))
+                            visited[y, x+1] = True
+                            if x + 1 > object_contour[1][0]:
+                                object_contour[1][0] = x + 1
+                                print(object_contour[1][0])
+                    
+                    #contours.append(object_contour)
+                    print(f'Now I found {object_contour}')
+        print(f'Contour numbers is equal to {len(contours)}')
 
     @staticmethod             
     def convertRGBtoGray(image):
