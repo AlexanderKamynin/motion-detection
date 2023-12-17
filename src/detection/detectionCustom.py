@@ -18,7 +18,7 @@ class MotionDetectionCustom:
         
         self.__tracker = None
     
-        self.__min_area = 500
+        self.__min_area = 125
         self.__blur_kernel_size = 5
         self.__gaussian_blur = GaussianBlur(self.__blur_kernel_size)
         self.__morphology = MorphologyOperations()
@@ -57,7 +57,14 @@ class MotionDetectionCustom:
                 processed_frames.append(dilated)
                 accumulate_frame = np.mean(processed_frames, axis=0).astype('uint8')
                 
-                self.__find_contours(accumulate_frame)
+                cv2.imshow("origin", accumulate_frame)
+                contours = self.__find_contours(accumulate_frame)
+                for contour in contours:
+                    left_up, right_down = contour
+                    cv2.rectangle(accumulate_frame, left_up, right_down, 255, 2)
+                
+                cv2.imshow("contour", accumulate_frame)
+                cv2.waitKey(0)
                 
                 cv2.imshow("video", difference)
                 frame1 = frame2
@@ -87,6 +94,7 @@ class MotionDetectionCustom:
                         x, y = queue.pop(0)
                         visited[y, x] = True
                         
+                        # left
                         if x - 1 >= 0 and image[y, x-1] >= 170 and not visited[y, x-1]:
                             queue.append((x-1,y))
                             visited[y, x-1] = True
@@ -113,11 +121,14 @@ class MotionDetectionCustom:
                             visited[y, x+1] = True
                             if x + 1 > object_contour[1][0]:
                                 object_contour[1][0] = x + 1
-                                print(object_contour[1][0])
                     
-                    #contours.append(object_contour)
-                    print(f'Now I found {object_contour}')
+                    # check that area is above that min_area
+                    if (object_contour[1][0] - object_contour[0][0]) * (object_contour[1][1] - object_contour[0][1]) >= self.__min_area:
+                        contours.append(object_contour)
+                        print(f'Now I found {object_contour}')
         print(f'Contour numbers is equal to {len(contours)}')
+        
+        return contours
 
     @staticmethod             
     def convertRGBtoGray(image):
