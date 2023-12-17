@@ -18,12 +18,12 @@ class MotionDetectionCustom:
         
         self.__tracker = None
     
-        self.__min_area = 125
+        self.__min_area = 80
         self.__blur_kernel_size = 5
         self.__gaussian_blur = GaussianBlur(self.__blur_kernel_size)
         self.__morphology = MorphologyOperations()
         self.__threshold = 25
-        self.__max_frames = 4
+        self.__max_frames = 1
         
     def detect(self):
         is_success, frame1 = self.__video_stream.read()
@@ -57,16 +57,17 @@ class MotionDetectionCustom:
                 processed_frames.append(dilated)
                 accumulate_frame = np.mean(processed_frames, axis=0).astype('uint8')
                 
-                cv2.imshow("origin", accumulate_frame)
+                #cv2.imshow("origin", accumulate_frame)
                 contours = self.__find_contours(accumulate_frame)
                 for contour in contours:
                     left_up, right_down = contour
-                    cv2.rectangle(accumulate_frame, left_up, right_down, 255, 2)
+                    left_up = (left_up[0] * 4, left_up[1] * 4)
+                    right_down = (right_down[0] * 4, right_down[1] * 4)
+                    cv2.rectangle(frame1, left_up, right_down, (0, 255, 0), 2)
                 
-                cv2.imshow("contour", accumulate_frame)
-                cv2.waitKey(0)
-                
-                cv2.imshow("video", difference)
+                #cv2.imshow("contour", accumulate_frame)
+                #cv2.imshow("difference", difference)
+                cv2.imshow("video", frame1)
                 frame1 = frame2
                 is_success, frame2 = self.__video_stream.read()
                 
@@ -81,12 +82,13 @@ class MotionDetectionCustom:
     def __find_contours(self, image):
         h, w = image.shape[:2]
         visited = np.zeros((h,w), dtype=bool)
+        in_image = lambda nx, ny: 0 <= nx < w and 0 <= ny < h
         contours = []
-        for row in range(h):
-            for col in range(w):
-                if not visited[row][col] and image[row][col]:
-                    queue = []
-                    
+        queue = []
+        
+        for row in range(0, h, 2):
+            for col in range(0, w, 2):
+                if not visited[row][col] and image[row][col] and not MotionDetectionCustom.dot_inside_contours(row, col, contours):                    
                     queue.append((col, row))
                     object_contour = [[col,row], [col,row]]
                     
@@ -94,39 +96,30 @@ class MotionDetectionCustom:
                         x, y = queue.pop(0)
                         visited[y, x] = True
                         
-                        # left
-                        if x - 1 >= 0 and image[y, x-1] >= 170 and not visited[y, x-1]:
-                            queue.append((x-1,y))
-                            visited[y, x-1] = True
-                            # update left corner
-                            if x - 1 < object_contour[0][0]:
-                                object_contour[0][0] = x - 1
+                        neighbors = [
+                            (x-1, y), # left
+                            (x, y-1), # up
+                            (x+1, y), # right
+                            (x, y+1) # down
+                        ]
+                        
+                        for neighbor in neighbors:
+                            nx, ny = neighbor
+                            if not visited[ny, nx] and in_image(nx, ny) and image[ny, nx] >= 170:
+                                queue.append((nx, ny))
+                                visited[ny, nx] = True
+                                # update object_contour
+                                object_contour[0][0] = min(object_contour[0][0], nx)
+                                object_contour[0][1] = min(object_contour[0][1], ny)
+                                object_contour[1][0] = max(object_contour[1][0], nx)
+                                object_contour[1][1] = max(object_contour[1][1], ny)
                                 
-                        # up
-                        if y - 1 >= 0 and image[y-1, x] >= 170 and not visited[y-1, x]:
-                            queue.append((x,y-1))
-                            visited[y-1, x] = True
-                            if y - 1 < object_contour[0][1]:
-                                object_contour[0][1] = y - 1
-                                
-                        # right
-                        if y + 1 < h and image[y+1, x] >= 170 and not visited[y+1, x]:
-                            queue.append((x,y+1))
-                            visited[y+1, x] = True
-                            if y + 1 > object_contour[1][1]:
-                                object_contour[1][1] = y + 1
-                        # down
-                        if x + 1 < w and image[y, x+1] >= 170 and not visited[y, x+1]:
-                            queue.append((x+1,y))
-                            visited[y, x+1] = True
-                            if x + 1 > object_contour[1][0]:
-                                object_contour[1][0] = x + 1
                     
                     # check that area is above that min_area
                     if (object_contour[1][0] - object_contour[0][0]) * (object_contour[1][1] - object_contour[0][1]) >= self.__min_area:
                         contours.append(object_contour)
-                        print(f'Now I found {object_contour}')
-        print(f'Contour numbers is equal to {len(contours)}')
+                        #print(f'Now I found {object_contour}')
+        #print(f'Contour numbers is equal to {len(contours)}')
         
         return contours
 
@@ -139,6 +132,13 @@ class MotionDetectionCustom:
         gray_img = 0.299*image[:,:,0] + 0.587*image[:,:,1] + 0.114*image[:,:,2]
         gray_img = gray_img.astype('int')
         return gray_img
+    
+    @staticmethod
+    def dot_inside_contours(y, x, contours):
+        for rect in contours:
+            if rect[0][0] <= x <= rect[1][0] and rect[0][1] <= y <= rect[1][1]:
+                return True
+        return False
 
 if __name__ == '__main__':
     video_stream = cv2.VideoCapture('../videos/test1.mp4')
