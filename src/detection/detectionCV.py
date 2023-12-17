@@ -20,7 +20,7 @@ class MotionDetectionCV:
         self.__min_area = 500
         self.__blur_kernel_size = (5,5)
         self.__threshold = 25
-        self.__max_frames = 4
+        self.__max_frames = 1
 
     def detect(self):
         is_success, frame1 = self.__video_stream.read()
@@ -131,7 +131,7 @@ class MotionDetectionCV:
 
 
 if __name__ == '__main__':
-    video_stream = cv2.VideoCapture('../videos/test1.mp4')
+    video_stream = cv2.VideoCapture('../videos/default.mp4')
     # video_stream = cv.VideoCapture('http://192.168.217.103/mjpg/video.mjpg')
     md = MotionDetectionCV(video_stream)
     md.detect()

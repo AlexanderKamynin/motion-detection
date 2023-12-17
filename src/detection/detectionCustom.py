@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from collections import deque
+import time
 import sys
 import os
 
@@ -18,11 +20,12 @@ class MotionDetectionCustom:
         
         self.__tracker = None
     
-        self.__min_area = 80
+        self.__min_area = 100
         self.__blur_kernel_size = 5
         self.__gaussian_blur = GaussianBlur(self.__blur_kernel_size)
         self.__morphology = MorphologyOperations()
         self.__threshold = 25
+        self.__bounding_threshold = 200
         self.__max_frames = 1
         
     def detect(self):
@@ -32,7 +35,7 @@ class MotionDetectionCustom:
         # skip tracking until it's not to be done
         
         frame_count = 0
-        processed_frames = []
+        processed_frames = deque()
         
         while self.__video_stream.isOpened():
             is_success, frame2 = self.__video_stream.read()
@@ -41,7 +44,7 @@ class MotionDetectionCustom:
                 # when frame count is more than max computing frames, using in detect - update processed frames
                 # just delete the first element from history
                 if frame_count > self.__max_frames:
-                    processed_frames.pop(0)
+                    processed_frames.popleft()
                     
                 # converting frames to gray
                 gray_frame1 = MotionDetectionCustom.convertRGBtoGray(frame1)
@@ -52,21 +55,22 @@ class MotionDetectionCustom:
                 difference = self.__gaussian_blur.blur_image(difference)
                 # threshold
                 threshold = ((difference > self.__threshold) * 255).astype('uint8')
-                dilated = self.__morphology.dilate(threshold)
+                
+                resize_coef = 4
+                dilated = self.__morphology.dilate(threshold, resize_coef)
                 
                 processed_frames.append(dilated)
                 accumulate_frame = np.mean(processed_frames, axis=0).astype('uint8')
                 
-                #cv2.imshow("origin", accumulate_frame)
+                cv2.imshow("dilated", accumulate_frame)
                 contours = self.__find_contours(accumulate_frame)
                 for contour in contours:
                     left_up, right_down = contour
-                    left_up = (left_up[0] * 4, left_up[1] * 4)
-                    right_down = (right_down[0] * 4, right_down[1] * 4)
+                    left_up = (left_up[0] * 4, left_up[1] * resize_coef)
+                    right_down = (right_down[0] * 4, right_down[1] * resize_coef)
                     cv2.rectangle(frame1, left_up, right_down, (0, 255, 0), 2)
                 
-                #cv2.imshow("contour", accumulate_frame)
-                #cv2.imshow("difference", difference)
+                cv2.imshow("difference", difference)
                 cv2.imshow("video", frame1)
                 frame1 = frame2
                 is_success, frame2 = self.__video_stream.read()
@@ -80,11 +84,21 @@ class MotionDetectionCustom:
         cv2.destroyAllWindows()
         
     def __find_contours(self, image):
+        #start_time = time.perf_counter()
         h, w = image.shape[:2]
         visited = np.zeros((h,w), dtype=bool)
         in_image = lambda nx, ny: 0 <= nx < w and 0 <= ny < h
         contours = []
-        queue = []
+        queue = deque()
+        
+        def update_contour(object_contour, x, y):
+            object_contour[0][0] = min(object_contour[0][0], x)
+            object_contour[0][1] = min(object_contour[0][1], y)
+            object_contour[1][0] = max(object_contour[1][0], x)
+            object_contour[1][1] = max(object_contour[1][1], y)
+        
+        #valid = np.where(image >= self.__bounding_threshold)
+        #for row, col in zip(valid[0], valid[1]):
         
         for row in range(0, h, 2):
             for col in range(0, w, 2):
@@ -93,34 +107,32 @@ class MotionDetectionCustom:
                     object_contour = [[col,row], [col,row]]
                     
                     while queue:
-                        x, y = queue.pop(0)
+                        x, y = queue.popleft()
                         visited[y, x] = True
                         
-                        neighbors = [
+                        neighbors = np.array([
                             (x-1, y), # left
                             (x, y-1), # up
                             (x+1, y), # right
                             (x, y+1) # down
-                        ]
+                        ])
                         
                         for neighbor in neighbors:
                             nx, ny = neighbor
-                            if not visited[ny, nx] and in_image(nx, ny) and image[ny, nx] >= 170:
+                            if not visited[ny, nx] and in_image(nx, ny) and image[ny, nx] >= self.__bounding_threshold:
                                 queue.append((nx, ny))
                                 visited[ny, nx] = True
                                 # update object_contour
-                                object_contour[0][0] = min(object_contour[0][0], nx)
-                                object_contour[0][1] = min(object_contour[0][1], ny)
-                                object_contour[1][0] = max(object_contour[1][0], nx)
-                                object_contour[1][1] = max(object_contour[1][1], ny)
+                                update_contour(object_contour, nx, ny)
                                 
                     
                     # check that area is above that min_area
                     if (object_contour[1][0] - object_contour[0][0]) * (object_contour[1][1] - object_contour[0][1]) >= self.__min_area:
                         contours.append(object_contour)
-                        #print(f'Now I found {object_contour}')
+                                #print(f'Now I found {object_contour}')
+                                
         #print(f'Contour numbers is equal to {len(contours)}')
-        
+        #print("{:g} s".format(time.perf_counter() - start_time))
         return contours
 
     @staticmethod             
