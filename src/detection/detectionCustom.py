@@ -20,7 +20,7 @@ class MotionDetectionCustom:
         
         self.__tracker = None
     
-        self.__min_area = 100
+        self.__min_area = 50
         self.__blur_kernel_size = 5
         self.__gaussian_blur = GaussianBlur(self.__blur_kernel_size)
         self.__morphology = MorphologyOperations()

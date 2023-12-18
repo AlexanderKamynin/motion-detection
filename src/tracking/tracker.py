@@ -13,8 +13,9 @@ class Tracker:
             3. criteria: Критерий останова для итеративного алгоритма оптического потока. 
                 Это обычно комбинация из максимального количества итераций и минимального значения, используемого для оценки изменения.
         '''
+        self.winSize = (15, 15)
         self.__lk_params = dict(
-            winSize = (15,15),
+            winSize = self.winSize,
             maxLevel = 2,
             criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03)
         )
@@ -35,6 +36,7 @@ class Tracker:
         self.__points_history.append({'old_points': old_points, 'new_points': new_points})
         
         for idx, point in enumerate(new_points):
+            print(f'--cv: old: x;y={old_points[idx]}; new: x;y={point}')
             old = tuple(map(int, old_points[idx]))
             new = tuple(map(int, point))
             self.__mask = cv2.line(self.__mask, old, new, self.__colors[idx].tolist(), thickness=2)
@@ -43,6 +45,32 @@ class Tracker:
             self.__clear_last_points()
             
         return self.__mask.astype('uint8')
+    
+    def optical_flow(self, old_frame, new_frame, object_points):
+        w = self.winSize[0] // 2
+        
+        # normalize images
+        old_frame = old_frame / 255.0
+        new_frame = new_frame / 255.0
+        
+        for point in object_points:
+            x, y = point
+            
+            Ix = 0
+            Iy = 0
+            It = 0
+            for k in range(-w, w + 1):
+                Ix += (old_frame[y, x + k + w] - old_frame[y, x + k - w])
+                Iy += (old_frame[y + k + w, x] - old_frame[y + k - w, x])
+                It += (new_frame[y + k, x + k] - old_frame[y + k, x + k])
+            
+            b = np.array([-It])
+            A = np.array([[Ix, Iy]])
+
+            U = np.matmul(np.linalg.pinv(A), b)
+            
+            print(f'--custom: old: x={x}, y={y}; new: x={x + U[0]}, y={y + U[1]}')
+        
     
     def __clear_last_points(self):
         last_points = self.__points_history.pop(0)
