@@ -36,7 +36,6 @@ class Tracker:
         self.__points_history.append({'old_points': old_points, 'new_points': new_points})
         
         for idx, point in enumerate(new_points):
-            print(f'--cv: old: x;y={old_points[idx]}; new: x;y={point}')
             old = tuple(map(int, old_points[idx]))
             new = tuple(map(int, point))
             self.__mask = cv2.line(self.__mask, old, new, self.__colors[idx].tolist(), thickness=2)
