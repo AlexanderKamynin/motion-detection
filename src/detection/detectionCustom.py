@@ -16,12 +16,12 @@ from components.geometryUtils import GeometryUtils
 class MotionDetectionCustom:
     def __init__(
         self,
-        min_area: int = 50,
+        min_area: int = 60,
         blur_kernel_size: int = 5,
         threshold: int = 25,
         bounding_threshold: int = 200,
         resize_coef: int = 4,
-        max_frames: int = 4,
+        max_frames: int = 1,
     ) -> None:
         """
         Initializes an instance of the MotionDetector class for motion detection on a video stream using custom realization.
@@ -86,7 +86,9 @@ class MotionDetectionCustom:
         if self.__frame_count > self.__max_frames:
             self.__processed_frames.popleft()
 
-        difference = abs(old_gray_frame - new_gray_frame).astype("uint8")
+        difference = np.abs(old_gray_frame.astype("int") - new_gray_frame).astype(
+            "uint8"
+        )
         difference = self.__gaussian_blur.blur_image(difference)
         threshold = ((difference > self.__threshold) * 255).astype("uint8")
         dilated = self.__morphology.dilate(threshold, self.__resize_coef)
@@ -99,7 +101,10 @@ class MotionDetectionCustom:
         bounded_rectangles = []
         for contour in contours:
             left_up, right_down = contour
-            left_up = (left_up[0] * self.__resize_coef, left_up[1] * self.__resize_coef)
+            left_up = (
+                left_up[0] * self.__resize_coef,
+                left_up[1] * self.__resize_coef,
+            )
             right_down = (
                 right_down[0] * self.__resize_coef,
                 right_down[1] * self.__resize_coef,
@@ -128,12 +133,6 @@ class MotionDetectionCustom:
         in_image = lambda x, y: 0 <= x < w and 0 <= y < h
         contours = []
         queue = deque()
-
-        def update_contour(object_contour, x, y):
-            object_contour[0][0] = min(object_contour[0][0], x)
-            object_contour[0][1] = min(object_contour[0][1], y)
-            object_contour[1][0] = max(object_contour[1][0], x)
-            object_contour[1][1] = max(object_contour[1][1], y)
 
         # valid = np.where(image >= self.__bounding_threshold)
         # for row, col in zip(valid[0], valid[1]):
@@ -170,7 +169,11 @@ class MotionDetectionCustom:
                             ):
                                 queue.append((nx, ny))
                                 visited[ny, nx] = True
-                                update_contour(object_contour, nx, ny)
+
+                                object_contour[0][0] = min(object_contour[0][0], nx)
+                                object_contour[0][1] = min(object_contour[0][1], ny)
+                                object_contour[1][0] = max(object_contour[1][0], nx)
+                                object_contour[1][1] = max(object_contour[1][1], ny)
 
                     # check that area is above that min_area
                     if GeometryUtils.get_rect_area(object_contour) >= self.__min_area:

@@ -30,5 +30,5 @@ class ImageProcessingUtils:
         gray_img = (
             0.299 * image[:, :, 0] + 0.587 * image[:, :, 1] + 0.114 * image[:, :, 2]
         )
-        gray_img = gray_img.astype("int")
+        gray_img = gray_img.astype("uint8")
         return gray_img

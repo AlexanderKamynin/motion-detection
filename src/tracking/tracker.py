@@ -6,7 +6,10 @@ import typing
 
 class Tracker:
     def __init__(
-        self, frame_size: typing.Tuple[int, int, int], max_points: int = 30
+        self,
+        frame_size: typing.Tuple[int, int, int],
+        max_points: int = 30,
+        win_size: typing.Tuple[int, int] = (15, 15),
     ) -> None:
         """
         Initialize an instance of the Tracker class for optical flow tracking using the Lucas-Kanade method.
@@ -18,8 +21,11 @@ class Tracker:
 
         max_points : int, optional
             The count of max tracking points to save. Default is 30.
+
+        win_size : Tuple[int, int], optional
+            The size of the window used to find the optical flow. Default is (15,15).
         """
-        self.__win_size = (15, 15)
+        self.__win_size = win_size
 
         """
             Parameters to execute the Lucas-Kanade method
@@ -39,7 +45,7 @@ class Tracker:
         self.__frame_size = frame_size
         self.__mask = np.zeros(self.__frame_size)
         self.__max_point = max_points
-        self.__colors = np.random.randint(0, 255, (15, 3))
+        self.__colors = (0, 255, 0)
         self.__points_history = []
 
     def track(
@@ -80,9 +86,7 @@ class Tracker:
         for idx, point in enumerate(new_points):
             old = tuple(map(int, old_points[idx]))
             new = tuple(map(int, point))
-            self.__mask = cv2.line(
-                self.__mask, old, new, self.__colors[idx].tolist(), thickness=2
-            )
+            self.__mask = cv2.line(self.__mask, old, new, self.__colors, thickness=2)
 
         if len(self.__points_history) > self.__max_point:
             self.__clear_last_points()

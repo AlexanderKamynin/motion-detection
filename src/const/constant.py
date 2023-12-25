@@ -1,2 +1,3 @@
-VIDEOSTREAM_PATH = './src/videos/'
-OUTPUT_PATH = './output/videos/'
+MODES = ["custom", "cv"]
+VIDEOSTREAM_PATH = "./src/videos/"
+OUTPUT_PATH = "./output/videos/"
