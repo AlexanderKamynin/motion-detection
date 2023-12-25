@@ -65,7 +65,9 @@ class GeometryUtils:
         return (x, y)
 
     @staticmethod
-    def dot_inside_contours(x: int, y: int, contours: typing.List[tuple]) -> bool:
+    def dot_inside_contours(
+        x: int, y: int, contours: typing.List[typing.List[tuple]]
+    ) -> bool:
         """
         Check if a point is inside any of the contours.
 
@@ -77,7 +79,7 @@ class GeometryUtils:
         y : int
             Y-coordinate of the point.
 
-        contours : List[tuple]
+        contours : List[List[tuple]]
             List of contours, where each contour is represented as [(topLeft_x, topLeft_y), (downRight_x, downRight_y)].
 
         Returns
@@ -88,6 +90,12 @@ class GeometryUtils:
         for rect in contours:
             if rect[0][0] <= x <= rect[1][0] and rect[0][1] <= y <= rect[1][1]:
                 return True
+        return False
+
+    @staticmethod
+    def dot_inside_contour(x: int, y: int, contour: typing.List[tuple]) -> bool:
+        if contour[0][0] <= x <= contour[1][0] and contour[0][1] <= y <= contour[1][1]:
+            return True
         return False
 
     @staticmethod

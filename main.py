@@ -66,10 +66,11 @@ class Core:
                     gray_frame1, gray_frame2
                 )
 
-                object_points = []
+                object_points = {}
                 # draw all rectangles
                 if bounded_rectangles:
-                    for rectangle in bounded_rectangles:
+                    for id in bounded_rectangles.keys():
+                        rectangle = bounded_rectangles[id]
                         cv2.rectangle(
                             frame1,
                             (rectangle[0][0], rectangle[0][1]),
@@ -79,7 +80,7 @@ class Core:
                         )
                         rectangle_center = GeometryUtils.get_rect_center(rectangle)
                         cv2.circle(frame1, rectangle_center, 3, (255, 0, 0), 1)
-                        object_points.append(rectangle_center)
+                        object_points[id] = rectangle_center
 
                 trajectory_mask = self.__tracker.track(
                     gray_frame1, gray_frame2, object_points
@@ -97,7 +98,7 @@ class Core:
 
         self.__video_stream.release()
         cv2.destroyAllWindows()
-        print("End detection...")
+        print("End detection!")
 
     def __read_video(self) -> None:
         print("Start read the video...")

@@ -52,7 +52,7 @@ class Tracker:
         self,
         old_gray_frame: np.ndarray,
         new_gray_frame: np.ndarray,
-        object_points: typing.List[typing.List[tuple]],
+        object_points: typing.Dict[int, typing.Tuple[int, int]],
     ) -> np.ndarray:
         """
         Perform optical flow tracking using the Lucas-Kanade method.
@@ -65,18 +65,19 @@ class Tracker:
         new_gray_frame : numpy.ndarray
             Grayscale current frame.
 
-        object_points : List[List[tuple]]
-            List of object points [(x1, y1), (x2, y2)], ... to be tracked.
+        object_points : Dict[int, Tuple[int, int]]
+            Dictionary containing the unique identifiers of the objects as keys and their corresponding rectangle center coords as values in the form (x, y).
 
         Returns
         -------
         numpy.ndarray
             Mask (image) with vectors from old to new positions.
         """
-        old_points = np.array(object_points, dtype=np.float32)
+        old_points = np.array(list(object_points.values()), dtype=np.float32)
         new_points, _, _ = cv2.calcOpticalFlowPyrLK(
             old_gray_frame, new_gray_frame, old_points, None, **self.__lk_params
         )
+        print(old_points, new_points)
 
         # save points
         self.__points_history.append(
