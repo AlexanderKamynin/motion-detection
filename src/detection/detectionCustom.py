@@ -1,158 +1,178 @@
-import cv2
+# import dependencies
+import cv2  # used for log
 import numpy as np
 from collections import deque
-import time
+import typing
 import sys
 import os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# import project components
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from components.gaussianBlur import GaussianBlur
 from components.morphology import MorphologyOperations
+from components.geometryUtils import GeometryUtils
 
 
 class MotionDetectionCustom:
-    def __init__(self, video_stream):
-        self.__video_stream = video_stream
-        
-        self.__height = int(video_stream.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.__width = int(video_stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.__channel_numbers = 0
-        
-        self.__tracker = None
-    
-        self.__min_area = 50
-        self.__blur_kernel_size = 5
+    def __init__(
+        self,
+        min_area: int = 50,
+        blur_kernel_size: int = 5,
+        threshold: int = 25,
+        bounding_threshold: int = 200,
+        resize_coef: int = 4,
+        max_frames: int = 4,
+    ) -> None:
+        """
+        Initializes an instance of the MotionDetector class for motion detection on a video stream using custom realization.
+
+        Parameters
+        ----------
+        min_area : int, optional
+            Minimum area of an object to be considered as motion. Default is 500.
+
+        blur_kernel_size : int, optional
+            Size of the kernel for image blurring. Default is 5.
+
+        threshold : int, optional
+            Threshold value for motion detection (minimal difference for frames). Default is 25.
+
+        bounding_threshold: int, optional
+            Threshold value for dilated binary frame. Default is 200.
+
+        resize_coef: int, optional
+            A coefficient indicating how many times the image size will be compressed during image processing (used in dilatation). Default is 4.
+
+        max_frames : int, optional
+            Maximum number of frames stored for averaging past frames when defining object contours. Default is 4.
+        """
+        # detection parameters
+        self.__min_area = min_area
+        self.__blur_kernel_size = blur_kernel_size
+        self.__threshold = threshold
+        self.__max_frames = max_frames
+        self.__resize_coef = resize_coef
+        self.__bounding_threshold = bounding_threshold
+
+        # detection components
         self.__gaussian_blur = GaussianBlur(self.__blur_kernel_size)
         self.__morphology = MorphologyOperations()
-        self.__threshold = 25
-        self.__bounding_threshold = 200
-        self.__max_frames = 1
-        
-    def detect(self):
-        is_success, frame1 = self.__video_stream.read()
-        
-        self.__channel_numbers = frame1.shape[-1]
-        # skip tracking until it's not to be done
-        
-        frame_count = 0
-        processed_frames = deque()
-        
-        while self.__video_stream.isOpened():
-            is_success, frame2 = self.__video_stream.read()
-            if is_success:
-                frame_count += 1
-                # when frame count is more than max computing frames, using in detect - update processed frames
-                # just delete the first element from history
-                if frame_count > self.__max_frames:
-                    processed_frames.popleft()
-                    
-                # converting frames to gray
-                gray_frame1 = MotionDetectionCustom.convertRGBtoGray(frame1)
-                gray_frame2 = MotionDetectionCustom.convertRGBtoGray(frame2)
-                
-                difference = abs(gray_frame1 - gray_frame2).astype('uint8')
-                # blur
-                difference = self.__gaussian_blur.blur_image(difference)
-                # threshold
-                threshold = ((difference > self.__threshold) * 255).astype('uint8')
-                
-                resize_coef = 4
-                dilated = self.__morphology.dilate(threshold, resize_coef)
-                
-                processed_frames.append(dilated)
-                accumulate_frame = np.mean(processed_frames, axis=0).astype('uint8')
-                
-                cv2.imshow("dilated", accumulate_frame)
-                contours = self.__find_contours(accumulate_frame)
-                for contour in contours:
-                    left_up, right_down = contour
-                    left_up = (left_up[0] * 4, left_up[1] * resize_coef)
-                    right_down = (right_down[0] * 4, right_down[1] * resize_coef)
-                    cv2.rectangle(frame1, left_up, right_down, (0, 255, 0), 2)
-                
-                cv2.imshow("difference", difference)
-                cv2.imshow("video", frame1)
-                frame1 = frame2
-                is_success, frame2 = self.__video_stream.read()
-                
-                if cv2.waitKey(15) & 0xFF == ord('q'):
-                    break
-            else:
-                break
-        
-        self.__video_stream.release()
-        cv2.destroyAllWindows()
-        
-    def __find_contours(self, image):
-        #start_time = time.perf_counter()
+
+        # processed frame parameters
+        self.__frame_count = 0
+        self.__processed_frames = deque()
+
+    def detect(
+        self, old_gray_frame: np.ndarray, new_gray_frame: np.ndarray
+    ) -> typing.List[typing.List[tuple]]:
+        """
+        Detects motion in a video stream based on the difference between two grayscale frames.
+
+        Parameters
+        ----------
+        old_gray_frame : numpy.ndarray
+            Grayscale representation of the previous frame.
+
+        new_gray_frame : numpy.ndarray
+            Grayscale representation of the current frame.
+
+        Returns
+        -------
+        List[List[tuple]]
+            A list of bounding rectangles [(x1, y1), (x2, y2)] representing the detected motion areas.
+        """
+        # when frame count is more than max computing frames, using in detect - update processed frames
+        self.__frame_count += 1
+        if self.__frame_count > self.__max_frames:
+            self.__processed_frames.popleft()
+
+        difference = abs(old_gray_frame - new_gray_frame).astype("uint8")
+        difference = self.__gaussian_blur.blur_image(difference)
+        threshold = ((difference > self.__threshold) * 255).astype("uint8")
+        dilated = self.__morphology.dilate(threshold, self.__resize_coef)
+
+        self.__processed_frames.append(dilated)
+
+        accumulate_frame = np.mean(self.__processed_frames, axis=0).astype("uint8")
+        contours = self.__find_contours(accumulate_frame)
+
+        bounded_rectangles = []
+        for contour in contours:
+            left_up, right_down = contour
+            left_up = (left_up[0] * self.__resize_coef, left_up[1] * self.__resize_coef)
+            right_down = (
+                right_down[0] * self.__resize_coef,
+                right_down[1] * self.__resize_coef,
+            )
+            bounded_rectangles.append([left_up, right_down])
+
+        return bounded_rectangles
+
+    def __find_contours(self, image: np.ndarray) -> typing.List[typing.List[tuple]]:
+        """
+        Find contours in a binary image using a contour finding algorithm based on breadth-first search.
+
+        Parameters
+        ----------
+        image : np.ndarray
+            Binary image where contours need to be identified.
+
+        Returns
+        -------
+        List[List[int]]
+            A list of contours, where each contour is represented by a list of
+            coordinates [x, y].
+        """
         h, w = image.shape[:2]
-        visited = np.zeros((h,w), dtype=bool)
-        in_image = lambda nx, ny: 0 <= nx < w and 0 <= ny < h
+        visited = np.zeros((h, w), dtype=bool)
+        in_image = lambda x, y: 0 <= x < w and 0 <= y < h
         contours = []
         queue = deque()
-        
+
         def update_contour(object_contour, x, y):
             object_contour[0][0] = min(object_contour[0][0], x)
             object_contour[0][1] = min(object_contour[0][1], y)
             object_contour[1][0] = max(object_contour[1][0], x)
             object_contour[1][1] = max(object_contour[1][1], y)
-        
-        #valid = np.where(image >= self.__bounding_threshold)
-        #for row, col in zip(valid[0], valid[1]):
-        
+
+        # valid = np.where(image >= self.__bounding_threshold)
+        # for row, col in zip(valid[0], valid[1]):
+
         for row in range(0, h, 2):
             for col in range(0, w, 2):
-                if not visited[row][col] and image[row][col] and not MotionDetectionCustom.dot_inside_contours(row, col, contours):                    
+                if (
+                    not visited[row][col]
+                    and image[row][col]
+                    and not GeometryUtils.dot_inside_contours(row, col, contours)
+                ):
                     queue.append((col, row))
-                    object_contour = [[col,row], [col,row]]
-                    
+                    object_contour = [[col, row], [col, row]]
+
                     while queue:
                         x, y = queue.popleft()
                         visited[y, x] = True
-                        
-                        neighbors = np.array([
-                            (x-1, y), # left
-                            (x, y-1), # up
-                            (x+1, y), # right
-                            (x, y+1) # down
-                        ])
-                        
+
+                        neighbors = np.array(
+                            [
+                                (x - 1, y),  # left
+                                (x, y - 1),  # up
+                                (x + 1, y),  # right
+                                (x, y + 1),  # down
+                            ]
+                        )
+
                         for neighbor in neighbors:
                             nx, ny = neighbor
-                            if not visited[ny, nx] and in_image(nx, ny) and image[ny, nx] >= self.__bounding_threshold:
+                            if (
+                                not visited[ny, nx]
+                                and in_image(nx, ny)
+                                and image[ny, nx] >= self.__bounding_threshold
+                            ):
                                 queue.append((nx, ny))
                                 visited[ny, nx] = True
-                                # update object_contour
                                 update_contour(object_contour, nx, ny)
-                                
-                    
+
                     # check that area is above that min_area
-                    if (object_contour[1][0] - object_contour[0][0]) * (object_contour[1][1] - object_contour[0][1]) >= self.__min_area:
+                    if GeometryUtils.get_rect_area(object_contour) >= self.__min_area:
                         contours.append(object_contour)
-                                #print(f'Now I found {object_contour}')
-                                
-        #print(f'Contour numbers is equal to {len(contours)}')
-        #print("{:g} s".format(time.perf_counter() - start_time))
         return contours
-
-    @staticmethod             
-    def convertRGBtoGray(image):
-        # works faster without pre-conversion
-        #float_img = np.array([[pixel / 255 for pixel in row] for row in image])
-
-        # we don't need to clip values, because in worst case have 0.299*255 + 0.587*255 + 0.114*255 = 255 <= 255
-        gray_img = 0.299*image[:,:,0] + 0.587*image[:,:,1] + 0.114*image[:,:,2]
-        gray_img = gray_img.astype('int')
-        return gray_img
-    
-    @staticmethod
-    def dot_inside_contours(y, x, contours):
-        for rect in contours:
-            if rect[0][0] <= x <= rect[1][0] and rect[0][1] <= y <= rect[1][1]:
-                return True
-        return False
-
-if __name__ == '__main__':
-    video_stream = cv2.VideoCapture('../videos/test1.mp4')
-    md = MotionDetectionCustom(video_stream)
-    md.detect()
