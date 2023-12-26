@@ -61,10 +61,11 @@ class MotionDetectionCustom:
         # processed frame parameters
         self.__frame_count = 0
         self.__processed_frames = deque()
+        self.__detected_objects = {}
 
     def detect(
         self, old_gray_frame: np.ndarray, new_gray_frame: np.ndarray
-    ) -> typing.List[typing.List[tuple]]:
+    ) -> typing.Dict[int, typing.List[typing.List[tuple]]]:
         """
         Detects motion in a video stream based on the difference between two grayscale frames.
 
@@ -78,8 +79,9 @@ class MotionDetectionCustom:
 
         Returns
         -------
-        List[List[tuple]]
-            A list of bounding rectangles [(x1, y1), (x2, y2)] representing the detected motion areas.
+        Dict[int, List[List[tuple]]]
+            A dictionary containing the detected motion areas represented as a list of bounding rectangles [(x1, y1), (x2, y2)].
+            The keys of the dictionary correspond to the unique identifications of the detected objects.
         """
         # when frame count is more than max computing frames, using in detect - update processed frames
         self.__frame_count += 1
@@ -111,7 +113,9 @@ class MotionDetectionCustom:
             )
             bounded_rectangles.append([left_up, right_down])
 
-        return bounded_rectangles
+        self.__update_objects_id(bounded_rectangles)
+
+        return self.__detected_objects
 
     def __find_contours(self, image: np.ndarray) -> typing.List[typing.List[tuple]]:
         """
@@ -179,3 +183,52 @@ class MotionDetectionCustom:
                     if GeometryUtils.get_rect_area(object_contour) >= self.__min_area:
                         contours.append(object_contour)
         return contours
+
+    def __update_objects_id(
+        self, bounded_rectangles: typing.List[typing.List[tuple]]
+    ) -> None:
+        """
+        Update the dictionary of detected objects based on a list of bounded rectangles.
+
+        Parameters
+        ----------
+        bounded_rectangles : List[List[Tuple]]
+            A list of bounded rectangles, where each rectangle is represented as a list of tuples
+
+        Returns
+        -------
+        None
+        """
+        object_ids = self.__detected_objects.keys()
+        unused_detected_id = set(object_ids)
+
+        if not self.__detected_objects:
+            for idx, rect in enumerate(bounded_rectangles):
+                self.__detected_objects[idx] = rect.copy()
+        else:
+            for idx, rect in enumerate(bounded_rectangles):
+                match_found = False
+
+                for id in object_ids:
+                    object_center = GeometryUtils.get_rect_center(
+                        self.__detected_objects[id]
+                    )
+
+                    if GeometryUtils.dot_inside_contour(
+                        x=object_center[0], y=object_center[1], contour=rect
+                    ):
+                        self.__detected_objects[id] = rect
+                        # mark that rect object not new
+                        match_found = True
+                        # mark that id is actual
+                        unused_detected_id.remove(id)
+                        break
+
+                # add the new if no match found
+                if not match_found:
+                    new_id = max(object_ids) + 1
+                    self.__detected_objects[new_id] = rect.copy()
+
+        # remove objects that already no on the frame
+        for id in unused_detected_id:
+            del self.__detected_objects[id]

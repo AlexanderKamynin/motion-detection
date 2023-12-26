@@ -1,5 +1,6 @@
 # import dependencies
 import numpy as np
+import typing
 
 
 class ImageProcessingUtils:
@@ -32,3 +33,13 @@ class ImageProcessingUtils:
         )
         gray_img = gray_img.astype("uint8")
         return gray_img
+
+    @staticmethod
+    def generate_random_color(id: int) -> typing.Tuple[int, int, int]:
+        np.random.seed(id)
+
+        red = np.random.randint(0, 256)
+        green = np.random.randint(0, 256)
+        blue = np.random.randint(0, 256)
+
+        return (red, green, blue)

@@ -2,6 +2,12 @@
 import cv2
 import numpy as np
 import typing
+import sys
+import os
+
+# import project components
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from src.components.imageUtils import ImageProcessingUtils
 
 
 class Tracker:
@@ -45,7 +51,6 @@ class Tracker:
         self.__frame_size = frame_size
         self.__mask = np.zeros(self.__frame_size)
         self.__max_point = max_points
-        self.__colors = (0, 255, 0)
         self.__points_history = {}
 
     def track(
@@ -92,7 +97,13 @@ class Tracker:
         for idx, id in enumerate(object_points.keys()):
             old = tuple(map(int, old_points[idx]))
             new = tuple(map(int, new_points[idx]))
-            self.__mask = cv2.line(self.__mask, old, new, self.__colors, thickness=2)
+            self.__mask = cv2.line(
+                self.__mask,
+                old,
+                new,
+                ImageProcessingUtils.generate_random_color(id),
+                thickness=2,
+            )
 
         self.__clear_last_points(set(object_points.keys()))
 
