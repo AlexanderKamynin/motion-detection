@@ -46,7 +46,7 @@ class Tracker:
         self.__mask = np.zeros(self.__frame_size)
         self.__max_point = max_points
         self.__colors = (0, 255, 0)
-        self.__points_history = []
+        self.__points_history = {}
 
     def track(
         self,
@@ -77,20 +77,24 @@ class Tracker:
         new_points, _, _ = cv2.calcOpticalFlowPyrLK(
             old_gray_frame, new_gray_frame, old_points, None, **self.__lk_params
         )
-        print(old_points, new_points)
 
         # save points
-        self.__points_history.append(
-            {"old_points": old_points, "new_points": new_points}
-        )
+        for idx, id in enumerate(object_points.keys()):
+            if not id in self.__points_history.keys():
+                self.__points_history[id] = []
+            self.__points_history[id].append(
+                {
+                    "old_points": old_points[idx],
+                    "new_points": new_points[idx],
+                }
+            )
 
-        for idx, point in enumerate(new_points):
+        for idx, id in enumerate(object_points.keys()):
             old = tuple(map(int, old_points[idx]))
-            new = tuple(map(int, point))
+            new = tuple(map(int, new_points[idx]))
             self.__mask = cv2.line(self.__mask, old, new, self.__colors, thickness=2)
 
-        if len(self.__points_history) > self.__max_point:
-            self.__clear_last_points()
+        self.__clear_last_points(set(object_points.keys()))
 
         return self.__mask.astype("uint8")
 
@@ -127,7 +131,7 @@ class Tracker:
 
             print(f"--custom: old: x={x}, y={y}; new: x={x + U[0]}, y={y + U[1]}")
 
-    def __clear_last_points(self) -> None:
+    def __clear_last_points(self, detected_ids: set) -> None:
         """
         Clear the last tracked points from the history.
 
@@ -135,17 +139,30 @@ class Tracker:
         -------
         None
         """
-        last_points = self.__points_history.pop(0)
 
-        old = last_points["old_points"]
-        new = last_points["new_points"]
+        # define id that already not on the image
+        not_used_id = set(self.__points_history.keys()) - detected_ids
 
-        # set black on the mask
-        for idx, point in enumerate(old):
-            cv2.line(
-                self.__mask,
-                tuple(map(int, point)),
-                tuple(map(int, new[idx])),
-                color=(0, 0, 0),
-                thickness=2,
-            )
+        empty_id = []
+        for id in self.__points_history.keys():
+            point_count = len(self.__points_history[id])
+            if point_count >= self.__max_point or id in not_used_id:
+                last_points = self.__points_history[id].pop(0)
+
+                if point_count - 1 == 0:
+                    empty_id.append(id)
+
+                old = last_points["old_points"]
+                new = last_points["new_points"]
+                # set black on the mask
+                cv2.line(
+                    self.__mask,
+                    tuple(map(int, old)),
+                    tuple(map(int, new)),
+                    color=(0, 0, 0),
+                    thickness=2,
+                )
+
+        # delete all empty points id
+        for id in empty_id:
+            del self.__points_history[id]
