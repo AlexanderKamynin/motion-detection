@@ -37,9 +37,24 @@ class GaussianBlur:
         numpy.ndarray
             The blurred image after applying.
         """
-        blurred_img = convolve2d(image, self.__kernel).astype("uint8")
+        blurred_image = convolve2d(image, self.__kernel, mode="same").astype("uint8")
 
-        return blurred_img
+        # blurred_image = np.zeros(image.shape)
+        # h, w = image.shape[:2]
+
+        # for row in range(h + 1):
+        #     for col in range(w + 1):
+        #         if row + self.__kernel_size <= h and col + self.__kernel_size <= w:
+        #             batch = image[
+        #                 row : row + self.__kernel_size, col : col + self.__kernel_size
+        #             ]
+        #             blurred_image[row, col] = (batch * self.__kernel).sum()
+        # import cv2
+
+        # blurred_image = blurred_image.astype("uint8")
+        # cv2.imshow("blurred", blurred_image)
+
+        return blurred_image
 
     @staticmethod
     def gauss_func(sigma: float, x: int, y: int) -> float:

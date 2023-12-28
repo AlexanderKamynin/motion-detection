@@ -82,7 +82,7 @@ class MotionDetectionCV:
 
         accumulate_frame = np.mean(self.__processed_frames, axis=0).astype("uint8")
         # cv2.RETR_EXTERNAL provide deleting all inner (daughter) contours
-        contours, hierarchy = cv2.findContours(
+        contours, _ = cv2.findContours(
             accumulate_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
 

@@ -1,5 +1,6 @@
 # import dependencies
 import cv2
+import time
 
 # import project modules
 from src.detection.detectionCV import MotionDetectionCV
@@ -21,7 +22,7 @@ class Core:
         ----------
         mode : str, optional
             Mode for initializing the object. Should be one of {"custom", "cv"}.
-            If not specified or an invalid mode is provided, an exception will be raised.
+            If an invalid mode is provided, an exception will be raised.
         """
         if mode not in MODES:
             raise ValueError("Invalid mode. Mode should be one of {'custom', 'cv'}")
