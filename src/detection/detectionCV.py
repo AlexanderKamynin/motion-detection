@@ -49,7 +49,7 @@ class MotionDetectionCV:
 
     def detect(
         self, old_gray_frame: np.ndarray, new_gray_frame: np.ndarray
-    ) -> typing.Dict[int, typing.List[typing.List[tuple]]]:
+    ) -> typing.Dict[int, typing.List[tuple]]:
         """
         Detects motion in a video stream based on the difference between two grayscale frames.
 
@@ -63,7 +63,7 @@ class MotionDetectionCV:
 
         Returns
         -------
-        Dict[int, List[List[tuple]]]
+        Dict[int, List[tuple]]
             A dictionary containing the detected motion areas represented as a list of bounding rectangles [(x1, y1), (x2, y2)].
             The keys of the dictionary correspond to the unique identifications of the detected objects.
         """
