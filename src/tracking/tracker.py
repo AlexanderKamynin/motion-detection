@@ -44,11 +44,12 @@ class Tracker:
         """
         self.__lk_params = dict(
             winSize=self.__win_size,
-            maxLevel=2,
+            maxLevel=5,
             criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03),
         )
 
         self.__frame_size = frame_size
+        self.__thickness = 3
         self.__mask = np.zeros(self.__frame_size)
         self.__max_point = max_points
         self.__points_history = {}
@@ -78,6 +79,9 @@ class Tracker:
         numpy.ndarray
             Mask (image) with vectors from old to new positions.
         """
+        if not object_points:
+            return self.__mask.astype("uint8")
+
         old_points = np.array(list(object_points.values()), dtype=np.float32)
         new_points, _, _ = cv2.calcOpticalFlowPyrLK(
             old_gray_frame, new_gray_frame, old_points, None, **self.__lk_params
@@ -102,7 +106,7 @@ class Tracker:
                 old,
                 new,
                 ImageProcessingUtils.generate_random_color(id),
-                thickness=2,
+                thickness=self.__thickness,
             )
 
         self.__clear_last_points(set(object_points.keys()))
@@ -171,7 +175,7 @@ class Tracker:
                     tuple(map(int, old)),
                     tuple(map(int, new)),
                     color=(0, 0, 0),
-                    thickness=2,
+                    thickness=self.__thickness,
                 )
 
         # delete all empty points id

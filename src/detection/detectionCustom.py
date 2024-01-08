@@ -21,7 +21,7 @@ class MotionDetectionCustom:
         threshold: int = 25,
         bounding_threshold: int = 200,
         resize_coef: int = 4,
-        max_frames: int = 1,
+        max_frames: int = 4,
     ) -> None:
         """
         Initializes an instance of the MotionDetector class for motion detection on a video stream using custom realization.
@@ -145,7 +145,7 @@ class MotionDetectionCustom:
             for col in range(0, w, 2):
                 if (
                     not visited[row][col]
-                    and image[row][col]
+                    and image[row][col] >= self.__bounding_threshold
                     and not GeometryUtils.dot_inside_contours(row, col, contours)
                 ):
                     queue.append((col, row))
@@ -221,7 +221,8 @@ class MotionDetectionCustom:
                         # mark that rect object not new
                         match_found = True
                         # mark that id is actual
-                        unused_detected_id.remove(id)
+                        if id in unused_detected_id:
+                            unused_detected_id.remove(id)
                         break
 
                 # add the new if no match found

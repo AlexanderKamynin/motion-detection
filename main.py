@@ -14,7 +14,7 @@ from src.components.imageUtils import ImageProcessingUtils
 
 
 class Core:
-    def __init__(self, mode: str = "cv") -> None:
+    def __init__(self, mode: str = "cv", filepath: str = "") -> None:
         """
         Initialize a new instance of core motion detection.
 
@@ -23,11 +23,16 @@ class Core:
         mode : str, optional
             Mode for initializing the object. Should be one of {"custom", "cv"}.
             If an invalid mode is provided, an exception will be raised.
+
+        filepath : str, optional
+            Path to file with videostream for reading
         """
         if mode not in MODES:
             raise ValueError("Invalid mode. Mode should be one of {'custom', 'cv'}")
 
         self.__mode = mode
+        self.__filepath = filepath
+
         self.__video_stream = None
         self.__height = 0
         self.__width = 0
@@ -103,7 +108,7 @@ class Core:
 
     def __read_video(self) -> None:
         print("Start read the video...")
-        self.__video_stream = cv2.VideoCapture(VIDEOSTREAM_PATH + "test1.mp4")
+        self.__video_stream = cv2.VideoCapture(self.__filepath)
         # self.__video_stream = cv.VideoCapture('http://192.168.217.103/mjpg/video.mjpg')
         if not self.__video_stream:
             raise ValueError("Error opening video stream")
@@ -112,5 +117,5 @@ class Core:
 
 
 if __name__ == "__main__":
-    core = Core("cv")
+    core = Core(mode="cv", filepath=VIDEOSTREAM_PATH + "test1.mp4")
     core.start()

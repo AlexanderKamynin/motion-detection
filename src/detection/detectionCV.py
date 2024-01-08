@@ -114,6 +114,9 @@ class MotionDetectionCV:
         -------
         None
         """
+        if not bounded_rectangles:
+            return
+
         object_ids = self.__detected_objects.keys()
         unused_detected_id = set(object_ids)
 

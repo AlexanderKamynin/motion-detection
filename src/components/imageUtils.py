@@ -39,7 +39,7 @@ class ImageProcessingUtils:
         np.random.seed(id)
 
         red = np.random.randint(0, 256)
-        green = np.random.randint(0, 256)
-        blue = np.random.randint(0, 256)
+        green = (red + np.random.randint(64, 192)) % 256
+        blue = (green + np.random.randint(64, 192)) % 256
 
         return (red, green, blue)
